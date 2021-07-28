@@ -25,7 +25,7 @@ namespace InputOutput
                 .AddSingleton(_commands)
                 .BuildServiceProvider();
 
-            string token = "ODY5MTcwMzM0MDIzMTg0Mzk1.YP6T9A.uHyG_luwFfbefw3Y2EiWuTKVqbA";
+            string token = "TOKEN HERE";
 
 
             _client.Log += _client_Log;

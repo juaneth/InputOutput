@@ -11,14 +11,21 @@ namespace InputOutput.Modules
 {
     public class Commands :  ModuleBase<SocketCommandContext>
     {
-        [Command("test")]
-        public async Task Test()
+        [Command("help")]
+        [RequireBotPermission(GuildPermission.SendMessages)]
+        public async Task Help()
         {
-            var ping = new EmbedBuilder()
+            var HelpEmbed = new EmbedBuilder()
             {
-                Title = "Checking ping!",
-                Description = "This may take a while depending on the actual ping!"
+                Title = "Here's a list of commands: ",
             };
+
+            HelpEmbed.AddField("io.RT/io.retrieve",
+            "This 'retrieves' a file or folder and sends it as a file!").WithAuthor(Context.Client.CurrentUser).WithFooter(footer => footer.Text = ":)").WithColor(Color.DarkerGrey).WithDescription("This command was called by " + Context.Message.Author).WithCurrentTimestamp();
+
+
+
+            await ReplyAsync(embed: HelpEmbed.Build());
         }
 
         [Command("rt")]
@@ -30,14 +37,8 @@ namespace InputOutput.Modules
             //Embeds
             var builderfile = new EmbedBuilder()
             {
-                Title = "Grabbing file, just for you!",
+                Title = "Grabbing file/folder, just for you!",
                 Description = "This may take a while depending on the file size and upload speed"
-            };
-
-            var builderfolder = new EmbedBuilder()
-            {
-                Title = "Grabbing folder, just for you!",
-                Description = "This may take a while depending on the folder's size and upload speed"
             };
 
             var filenotfound = new EmbedBuilder()
@@ -49,49 +50,51 @@ namespace InputOutput.Modules
             var filesent = new EmbedBuilder()
             {
                 Title = "Here you go!",
-                Description = "This file could not be found, maybe check for typo's or use io.tree [PATH TO DIRECTORY] \nto see what files are in the directory"
+                Description = "Use io.help for a command list"
             };
+
+            var embedsent = await ReplyAsync(embed: builderfile.Build());
 
             if (File.Exists(filelocal))
             {
+                //If its a file
+                var messages = await Context.Message.Channel.GetMessagesAsync(1).FlattenAsync();
+                await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
 
+                var sendfilesent = filesent.Build();
+                await Context.Channel.SendFileAsync(embed: sendfilesent, filePath: filelocal);
             }
             else
             {
-                if (Directory.Exists(filelocal))
+                if (!Directory.Exists(filelocal))
                 {
-                    var embedsent = await ReplyAsync(embed: builderfolder.Build());
-                }
-                else
-                {
-
-                }
-
-
-            }
-
-
-
-
-            FileAttributes attr = File.GetAttributes(filelocal);
-            if (attr.HasFlag(FileAttributes.Directory))
-            {
-                
-            }
-            else
-            {
-                var embedsent = await ReplyAsync(embed: builderfile.Build());
-
-                if (File.Exists(filelocal))
-                {
+                    //if it cant be found
                     var messages = await Context.Message.Channel.GetMessagesAsync(1).FlattenAsync();
                     await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
 
-                    var sentfile = await Context.Channel.SendFileAsync(filelocal, "Here you go!");
+                    await ReplyAsync(embed: filenotfound.Build());
                 }
                 else
                 {
-                    
+                    //if its a directory
+                    FileAttributes attr = File.GetAttributes(filelocal);
+                    if (attr.HasFlag(FileAttributes.Directory))
+                    {
+                        string folder = filelocal;
+                        string zipped = @".\result.zip";
+
+                        if (File.Exists(@".\result.zip"))
+                        {
+                            File.Delete(@".\result.zip");
+                        }
+
+                        ZipFile.CreateFromDirectory(folder, zipped);
+
+                        var messages = await Context.Message.Channel.GetMessagesAsync(1).FlattenAsync();
+                        await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
+
+                        await Context.Channel.SendFileAsync(zipped, "Here you go!");
+                    }
                 }
             }
 
@@ -103,36 +106,69 @@ namespace InputOutput.Modules
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task Retrieve([Remainder] string filelocal)
         {
-            var builder = new EmbedBuilder()
+            //Embeds
+            var builderfile = new EmbedBuilder()
             {
-                Title = "Grabbing file, just for you!",
+                Title = "Grabbing file/folder, just for you!",
                 Description = "This may take a while depending on the file size and upload speed"
             };
-            await ReplyAsync(embed: builder.Build());
-            await Context.Channel.SendFileAsync(filelocal, "Here you go!");
-        }
 
-        [Command("zip")]
-        [RequireBotPermission(GuildPermission.SendMessages)]
-        [RequireBotPermission(GuildPermission.AttachFiles)]
-        [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task Zip([Remainder] string foldertozip)
-        {
-            var sendgrabfile = ReplyAsync("Grabbing file!");
-            if (Directory.Exists(foldertozip))
+            var filenotfound = new EmbedBuilder()
             {
-                string folder = foldertozip;
-                string zipped = @".\result.zip";
+                Title = "File not found.... sorry",
+                Description = "This file could not be found, maybe check for typo's or use io.tree [PATH TO DIRECTORY] \nto see what files are in the directory"
+            };
 
-                ZipFile.CreateFromDirectory(folder, zipped);
+            var filesent = new EmbedBuilder()
+            {
+                Title = "Here you go!",
+                Description = "Use io.help for a command list"
+            };
 
-                await Context.Channel.SendFileAsync(zipped, "Here you go!");
+            var embedsent = await ReplyAsync(embed: builderfile.Build());
+
+            if (File.Exists(filelocal))
+            {
+                //If its a file
+                var messages = await Context.Message.Channel.GetMessagesAsync(1).FlattenAsync();
+                await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
+
+                var sendfilesent = filesent.Build();
+                await Context.Channel.SendFileAsync(embed: sendfilesent, filePath: filelocal);
             }
             else
             {
-                await ReplyAsync("Folder not found.. sorry");
-            }
+                if (!Directory.Exists(filelocal))
+                {
+                    //if it cant be found
+                    var messages = await Context.Message.Channel.GetMessagesAsync(1).FlattenAsync();
+                    await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
 
+                    await ReplyAsync(embed: filenotfound.Build());
+                }
+                else
+                {
+                    //if its a directory
+                    FileAttributes attr = File.GetAttributes(filelocal);
+                    if (attr.HasFlag(FileAttributes.Directory))
+                    {
+                        string folder = filelocal;
+                        string zipped = @".\result.zip";
+
+                        if (File.Exists(@".\result.zip"))
+                        {
+                            File.Delete(@".\result.zip");
+                        }
+
+                        ZipFile.CreateFromDirectory(folder, zipped);
+
+                        var messages = await Context.Message.Channel.GetMessagesAsync(1).FlattenAsync();
+                        await (Context.Channel as SocketTextChannel).DeleteMessagesAsync(messages);
+
+                        await Context.Channel.SendFileAsync(zipped, "Here you go!");
+                    }
+                }
+            }
         }
     }
 }
